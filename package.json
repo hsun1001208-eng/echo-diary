@@ -1,0 +1,1 @@
+{"name":"echo-diary-v6","version":"6.0.0","private":true,"scripts":{"start":"node server.js"},"dependencies":{"express":"latest","openai":"latest"}}
