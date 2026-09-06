@@ -27,7 +27,7 @@ button:disabled{opacity:.45;cursor:default}.hint{font-size:12px;opacity:.65}
  .reply{left:16px;right:16px;top:95px;bottom:75px;font-size:18px}
  .hint{display:none}button{padding:8px 12px}
 }
-#fireworks{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none;z-index:9999}</style>
+#fireworks{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none;z-index:9999}@keyframes fadeInk{0%{transform:scale(.2);opacity:0}50%{transform:scale(2);opacity:.9}100%{transform:scale(0);opacity:0}}</style>
 </head>
 <body><canvas id='fireworks'></canvas>
 <header><h1>ECHO DIARY</h1><div class="status" id="status">可以開始書寫</div></header>
@@ -83,8 +83,30 @@ function image(){
  return out.toDataURL('image/png');
 }
 function clearInk(){ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false}
-function fireworks(){fw.width=innerWidth;fw.height=innerHeight;fw.style.display='block';const P=[];for(let n=0;n<12;n++){const cx=Math.random()*fw.width,cy=Math.random()*fw.height*0.55+40;for(let i=0;i<90;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*6;P.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:80+Math.random()*40})}}(function f(){fwctx.clearRect(0,0,fw.width,fw.height);P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.l--;fwctx.fillStyle='hsl('+((p.l*5)%360)+' 100% 60%)';fwctx.fillRect(p.x,p.y,3,3)});if(P.some(p=>p.l>0))requestAnimationFrame(f);else{fwctx.clearRect(0,0,fw.width,fw.height);fw.style.display='none'}})()} function type(text){
- reply.textContent='';reply.className='reply show';let i=0;
+function fireworks(){
+fw.width=window.innerWidth; fw.height=window.innerHeight;
+fw.style.position='fixed';fw.style.left='0';fw.style.top='0';
+fw.style.width='100vw';fw.style.height='100vh';
+fw.style.display='block';
+const P=[];const rockets=[];
+for(let i=0;i<22;i++) rockets.push({x:Math.random()*fw.width,y:fw.height+Math.random()*200,tx:Math.random()*fw.width,ty:Math.random()*fw.height*0.45+40,v:4+Math.random()*2});
+(function anim(){
+fwctx.fillStyle='rgba(0,0,0,0.08)';fwctx.fillRect(0,0,fw.width,fw.height);
+rockets.forEach(r=>{
+ if(r.done) return;
+ let dx=r.tx-r.x,dy=r.ty-r.y,d=Math.hypot(dx,dy);
+ if(d<8){r.done=true; for(let k=0;k<160;k++){let a=Math.random()*Math.PI*2,s=2+Math.random()*8;P.push({x:r.x,y:r.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:120})}}
+ else{r.x+=dx/d*r.v;r.y+=dy/d*r.v;fwctx.fillStyle='white';fwctx.fillRect(r.x,r.y,2,8);}
+});
+fwctx.globalCompositeOperation='lighter';
+P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.045;p.l--;fwctx.fillStyle=`hsla(${(p.l*4)%360},100%,60%,${p.l/120})`;fwctx.beginPath();fwctx.arc(p.x,p.y,2.2,0,Math.PI*2);fwctx.fill();});
+fwctx.globalCompositeOperation='source-over';
+if(P.some(p=>p.l>0)||rockets.some(r=>!r.done)) requestAnimationFrame(anim);
+else{fwctx.clearRect(0,0,fw.width,fw.height);fw.style.display='none';}
+})();
+}
+function inkDrop(x,y){const d=document.createElement('div');d.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:8px;height:8px;background:#111;border-radius:50%;filter:blur(1px);animation:fadeInk .7s forwards`;document.body.appendChild(d);setTimeout(()=>d.remove(),700)} function type(text){
+ reply.textContent='';reply.style.textShadow='0 0 8px rgba(255,240,180,.6)';reply.className='reply show';let i=0;
  const t=setInterval(()=>{reply.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(t)},22);
  setTimeout(()=>{reply.classList.add('fade');setTimeout(()=>{reply.className='reply';reply.textContent=''},4700)},Math.max(4300,text.length*22+1600));
 }
