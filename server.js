@@ -40,10 +40,16 @@ app.post("/api/diary", async (req, res) => {
       }]
     });
 
-    const transcript=(transcription.output_text||'').trim();
-    if(/(^|\\D)1024(\\D|$)/.test(transcript)) return res.json({reply:'生日快樂 🎉',special:'birthday'});
+    const transcript = (transcription.output_text || "").trim();
     if (!transcript || transcript === "□") {
       return res.json({ reply: "我還沒有看清這一頁，請再寫得清楚一些。" });
+    }
+
+    if (/(^|\D)1024(\D|$)/.test(transcript)) {
+      return res.json({
+        reply: "生日快樂。\n願今天的願望被好好收藏，也願下一頁仍有值得期待的故事。",
+        special: "birthday"
+      });
     }
 
     // Pass 2: answer strictly from the transcript. The transcript is also shown in the
