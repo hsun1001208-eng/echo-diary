@@ -2,22 +2,30 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Echo Diary V6</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Echo Diary V7</title>
 <style>
-*{box-sizing:border-box} body{margin:0;background:#17130f;color:#eee8dc;font-family:system-ui,"Noto Sans TC",sans-serif}
-header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:#0e0c0a;border-bottom:1px solid #4d4032}
-h1{font-size:20px;margin:0;letter-spacing:2px}.status{font-size:13px;opacity:.72}
-main{min-height:calc(100vh - 64px);display:grid;place-items:center;padding:24px}
-.diary{width:min(900px,96vw);min-height:min(760px,88vh);padding:48px 52px;background:#d9c79f;color:#302519;box-shadow:0 20px 70px #0008;border-radius:4px;position:relative}
-.page{position:absolute;top:20px;right:28px;font-size:12px;opacity:.55}
-#ink{width:100%;height:560px;display:block;touch-action:none;cursor:crosshair}
-.controls{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-button{border:1px solid #4b3a28;background:#efe1bc;color:#302519;padding:10px 18px;border-radius:5px;cursor:pointer}
-button:disabled{opacity:.45;cursor:default}
-.hint{font-size:12px;opacity:.65}.reply{position:absolute;left:52px;right:52px;top:170px;min-height:120px;display:none;align-items:center;justify-content:center;text-align:center;font-family:serif;font-size:22px;line-height:1.8;color:#241b12;white-space:pre-wrap}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{background:#17130f;color:#eee8dc;font-family:system-ui,"Noto Sans TC",sans-serif;overscroll-behavior:none}
+header{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#0e0c0a;border-bottom:1px solid #4d4032}
+h1{font-size:19px;margin:0;letter-spacing:2px}.status{font-size:13px;opacity:.72}
+main{height:calc(100dvh - 60px);display:grid;place-items:center;padding:16px}
+.diary{width:min(900px,96vw);height:min(820px,calc(100dvh - 92px));padding:38px 46px 22px;background:#d9c79f;color:#302519;box-shadow:0 20px 70px #0008;border-radius:4px;position:relative;display:flex;flex-direction:column}
+.page{position:absolute;top:15px;right:24px;font-size:12px;opacity:.55}
+#ink{width:100%;flex:1;min-height:0;display:block;touch-action:none;-webkit-user-select:none;user-select:none;cursor:crosshair}
+.controls{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px}
+button{border:1px solid #4b3a28;background:#efe1bc;color:#302519;padding:9px 15px;border-radius:5px;cursor:pointer}
+button:disabled{opacity:.45;cursor:default}.hint{font-size:12px;opacity:.65}
+.reply{position:absolute;left:46px;right:46px;top:145px;bottom:110px;display:none;align-items:center;justify-content:center;text-align:center;font-family:serif;font-size:21px;line-height:1.8;color:#241b12;white-space:pre-wrap;padding:25px;pointer-events:none}
 .reply.show{display:flex}.fade{animation:fade 4.5s ease forwards}@keyframes fade{0%,65%{opacity:1}100%{opacity:0}}
-@media(max-width:600px){.diary{padding:32px 22px}.reply{left:22px;right:22px;top:130px;font-size:18px}#ink{height:60vh}}
+@media(max-width:600px){
+ header{height:54px;padding:0 14px}.status{font-size:12px}
+ main{height:calc(100dvh - 54px);padding:8px}
+ .diary{width:100%;height:calc(100dvh - 70px);padding:30px 16px 12px}
+ .reply{left:16px;right:16px;top:95px;bottom:75px;font-size:18px}
+ .hint{display:none}button{padding:8px 12px}
+}
 </style>
 </head>
 <body>
@@ -34,39 +42,36 @@ button:disabled{opacity:.45;cursor:default}
 <script>
 const c=document.querySelector('#ink'),ctx=c.getContext('2d'),send=document.querySelector('#send'),
 clear=document.querySelector('#clear'),status=document.querySelector('#status'),reply=document.querySelector('#reply');
-let drawing=false,hasInk=false,page=1,points=[];
+let drawing=false,hasInk=false,page=1;
 function resize(){
- const r=c.getBoundingClientRect(),d=devicePixelRatio||1;
- c.width=r.width*d;c.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);
- ctx.strokeStyle='#241b12';ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';
+ const r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);
+ c.width=Math.max(1,Math.floor(r.width*d));c.height=Math.max(1,Math.floor(r.height*d));
+ ctx.setTransform(d,0,0,d,0,0);ctx.strokeStyle='#241b12';ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';
 }
-addEventListener('resize',resize); resize();
-function pos(e){const r=c.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top]}
-c.addEventListener('pointerdown',e=>{e.preventDefault();c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;points=[];let [x,y]=pos(e);points.push([x,y]);ctx.beginPath();ctx.moveTo(x,y)});
-c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();let [x,y]=pos(e);points.push([x,y]);ctx.lineTo(x,y);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y)});
-function up(e){drawing=false}
+addEventListener('resize',resize);requestAnimationFrame(resize);
+function pos(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+c.addEventListener('pointerdown',e=>{e.preventDefault();c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y)});
+c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const[x,y]=pos(e);ctx.lineTo(x,y);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y)});
+function up(e){drawing=false;try{c.releasePointerCapture(e.pointerId)}catch{}}
 c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);
-clear.addEventListener('click',()=>{ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false;points=[]});
+clear.addEventListener('click',()=>{ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false});
 function image(){return c.toDataURL('image/png')}
-function clearInk(){ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false;points=[]}
+function clearInk(){ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false}
 function type(text){
- reply.textContent='';reply.classList.add('show');let i=0;
- const t=setInterval(()=>{reply.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(t)},24);
- setTimeout(()=>{reply.classList.add('fade');setTimeout(()=>{reply.className='reply';reply.textContent=''},4800)},Math.max(4300,text.length*24+1800));
+ reply.textContent='';reply.className='reply show';let i=0;
+ const t=setInterval(()=>{reply.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(t)},22);
+ setTimeout(()=>{reply.classList.add('fade');setTimeout(()=>{reply.className='reply';reply.textContent=''},4700)},Math.max(4300,text.length*22+1600));
 }
 send.addEventListener('click',async()=>{
- if(!hasInk)return;
- send.disabled=clear.disabled=true;status.textContent='正在讀取你的手寫……';
- const img=image();
+ if(!hasInk||send.disabled)return;
+ send.disabled=clear.disabled=true;status.textContent='正在辨認你的手寫……';
  try{
-   const r=await fetch('/api/diary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:img,page})});
-   if(!r.ok)throw new Error(await r.text());
-   const data=await r.json(); clearInk(); status.textContent='日記已回答'; type(data.reply||'……');
-   page++;document.querySelector('#page').textContent=String(page).padStart(2,'0');
- }catch(e){
-   status.textContent='連線不到 AI 服務';
-   alert('目前 AI 服務尚未連線。這個版本的前端已經完成，但要讓它真的讀懂中文手寫，還需要把後端部署到網路上。');
- }finally{send.disabled=clear.disabled=false}
+  const r=await fetch('/api/diary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:image(),page})});
+  if(!r.ok)throw new Error(await r.text());
+  const data=await r.json();clearInk();status.textContent='日記已回答';type(data.reply||'我還沒有看清這一頁。');
+  page++;document.querySelector('#page').textContent=String(page).padStart(2,'0');
+ }catch(e){console.error(e);status.textContent='AI 暫時無法回應';alert('AI 暫時沒有回應，請稍後再試。')}
+ finally{send.disabled=clear.disabled=false}
 });
 </script>
 </body>
