@@ -2,20 +2,21 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Echo Diary V7</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>Echo Diary V8</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden}
-body{background:#17130f;color:#eee8dc;font-family:system-ui,"Noto Sans TC",sans-serif;overscroll-behavior:none}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:pan-x pan-y}
+body{background:#17130f;color:#eee8dc;font-family:system-ui,"Noto Sans TC",sans-serif;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none}
 header{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#0e0c0a;border-bottom:1px solid #4d4032}
 h1{font-size:19px;margin:0;letter-spacing:2px}.status{font-size:13px;opacity:.72}
-main{height:calc(100dvh - 60px);display:grid;place-items:center;padding:16px}
-.diary{width:min(900px,96vw);height:min(820px,calc(100dvh - 92px));padding:38px 46px 22px;background:#d9c79f;color:#302519;box-shadow:0 20px 70px #0008;border-radius:4px;position:relative;display:flex;flex-direction:column}
+main{height:calc(100dvh - 60px);display:grid;place-items:center;padding:16px;touch-action:none}
+.diary{width:min(900px,96vw);height:min(820px,calc(100dvh - 92px));padding:38px 46px 22px;background:#d9c79f;color:#302519;box-shadow:0 20px 70px #0008;border-radius:4px;position:relative;display:flex;flex-direction:column;touch-action:none}
 .page{position:absolute;top:15px;right:24px;font-size:12px;opacity:.55}
-#ink{width:100%;flex:1;min-height:0;display:block;touch-action:none;-webkit-user-select:none;user-select:none;cursor:crosshair}
+#ink{width:100%;flex:1;min-height:0;display:block;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:crosshair}
 .controls{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px}
-button{border:1px solid #4b3a28;background:#efe1bc;color:#302519;padding:9px 15px;border-radius:5px;cursor:pointer}
+button{border:1px solid #4b3a28;background:#efe1bc;color:#302519;padding:9px 15px;border-radius:5px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.45;cursor:default}.hint{font-size:12px;opacity:.65}
 .reply{position:absolute;left:46px;right:46px;top:145px;bottom:110px;display:none;align-items:center;justify-content:center;text-align:center;font-family:serif;font-size:21px;line-height:1.8;color:#241b12;white-space:pre-wrap;padding:25px;pointer-events:none}
 .reply.show{display:flex}.fade{animation:fade 4.5s ease forwards}@keyframes fade{0%,65%{opacity:1}100%{opacity:0}}
@@ -34,15 +35,20 @@ button:disabled{opacity:.45;cursor:default}.hint{font-size:12px;opacity:.65}
 <div class="page">PAGE <span id="page">01</span></div>
 <canvas id="ink"></canvas>
 <div id="reply" class="reply"></div>
-<div class="controls">
-<span class="hint">直接在紙上手寫，不需要鍵盤。</span>
-<div><button id="clear">清除</button> <button id="send">封存這一段</button></div>
-</div>
+<div class="controls"><span class="hint">直接在紙上手寫，不需要鍵盤。</span><div><button id="clear">清除</button> <button id="send">封存這一段</button></div></div>
 </section></main>
 <script>
-const c=document.querySelector('#ink'),ctx=c.getContext('2d'),send=document.querySelector('#send'),
-clear=document.querySelector('#clear'),status=document.querySelector('#status'),reply=document.querySelector('#reply');
+const c=document.querySelector('#ink'),ctx=c.getContext('2d'),send=document.querySelector('#send'),clear=document.querySelector('#clear'),status=document.querySelector('#status'),reply=document.querySelector('#reply');
 let drawing=false,hasInk=false,page=1;
+
+// Stronger iOS/Safari zoom prevention while keeping the canvas writable.
+document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTouchEnd<=320)e.preventDefault();lastTouchEnd=now},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
+
 function resize(){
  const r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);
  c.width=Math.max(1,Math.floor(r.width*d));c.height=Math.max(1,Math.floor(r.height*d));
@@ -50,12 +56,32 @@ function resize(){
 }
 addEventListener('resize',resize);requestAnimationFrame(resize);
 function pos(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
-c.addEventListener('pointerdown',e=>{e.preventDefault();c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y)});
-c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const[x,y]=pos(e);ctx.lineTo(x,y);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y)});
+c.addEventListener('pointerdown',e=>{e.preventDefault();if(e.pointerType==='touch'&&e.isPrimary===false)return;c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y)},{passive:false});
+c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const[x,y]=pos(e);ctx.lineTo(x,y);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y)},{passive:false});
 function up(e){drawing=false;try{c.releasePointerCapture(e.pointerId)}catch{}}
-c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);
+c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);c.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')up(e)});
 clear.addEventListener('click',()=>{ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false});
-function image(){return c.toDataURL('image/png')}
+
+// Export only the actual ink, on an opaque high-contrast background, cropped and enlarged.
+// This gives the vision model a much cleaner handwriting image than the full diary page.
+function image(){
+ const w=c.clientWidth,h=c.clientHeight;
+ const src=ctx.getImageData(0,0,c.width,c.height),data=src.data,d= c.width/w;
+ let minX=c.width,minY=c.height,maxX=-1,maxY=-1;
+ for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
+   const i=(y*c.width+x)*4;
+   if(data[i+3]>25 && data[i]<100){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+ }
+ if(maxX<0)return c.toDataURL('image/png');
+ const pad=Math.round(32*d);
+ minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(c.width-1,maxX+pad);maxY=Math.min(c.height-1,maxY+pad);
+ const cw=maxX-minX+1,ch=maxY-minY+1,scale=Math.min(2.5,1600/Math.max(cw,ch));
+ const out=document.createElement('canvas');out.width=Math.max(600,Math.round(cw*scale));out.height=Math.max(260,Math.round(ch*scale));
+ const o=out.getContext('2d');o.fillStyle='#fffdf6';o.fillRect(0,0,out.width,out.height);o.imageSmoothingEnabled=false;
+ const temp=document.createElement('canvas');temp.width=c.width;temp.height=c.height;temp.getContext('2d').putImageData(src,0,0);
+ o.drawImage(temp,minX,minY,cw,ch,0,0,out.width,out.height);
+ return out.toDataURL('image/png');
+}
 function clearInk(){ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false}
 function type(text){
  reply.textContent='';reply.className='reply show';let i=0;
@@ -64,7 +90,7 @@ function type(text){
 }
 send.addEventListener('click',async()=>{
  if(!hasInk||send.disabled)return;
- send.disabled=clear.disabled=true;status.textContent='正在辨認你的手寫……';
+ send.disabled=clear.disabled=true;status.textContent='正在讀取你的字……';
  try{
   const r=await fetch('/api/diary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:image(),page})});
   if(!r.ok)throw new Error(await r.text());
