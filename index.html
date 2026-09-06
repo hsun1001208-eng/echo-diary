@@ -2,139 +2,107 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Echo Diary</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>Echo Diary V8</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none}
-body{background:#15120f;color:#e9dfcf;font-family:Georgia,"Noto Serif TC",serif;display:flex;align-items:center;justify-content:center}
-.diary{position:relative;width:min(94vw,900px);height:min(92vh,680px);background:#d9c7a6;border-radius:8px;box-shadow:0 18px 55px #0008;overflow:hidden;color:#392c20}
-.paper{position:absolute;inset:0;padding:7% 8%}
-h1{margin:0;font-size:clamp(25px,5vw,44px);letter-spacing:.16em}
-.sub{margin-top:6px;font-size:13px;opacity:.65}
-.page{position:absolute;top:7%;right:8%;font-size:12px;opacity:.55}
-#canvas{position:absolute;left:5%;top:18%;width:90%;height:58%;touch-action:none;cursor:crosshair}
-.controls{position:absolute;left:8%;right:8%;bottom:7%;display:flex;gap:10px;justify-content:flex-end}
-button{border:1px solid #6d5945;background:#eadcc4;color:#392c20;border-radius:8px;padding:10px 16px;font-family:inherit;font-size:14px}
-button:active{transform:scale(.98)}
-.reply{position:absolute;left:11%;right:11%;top:35%;min-height:90px;text-align:center;font-size:clamp(17px,3vw,25px);line-height:1.7;opacity:0;pointer-events:none;transition:opacity .35s}
-.reply.show{opacity:1}
-#fireworks{position:absolute;inset:0;pointer-events:none;display:none}
-#fireworks.show{display:block}
-.hint{position:absolute;left:8%;bottom:13%;font-size:12px;opacity:.5}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:pan-x pan-y}
+body{background:#17130f;color:#eee8dc;font-family:system-ui,"Noto Sans TC",sans-serif;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none}
+header{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#0e0c0a;border-bottom:1px solid #4d4032}
+h1{font-size:19px;margin:0;letter-spacing:2px}.status{font-size:13px;opacity:.72}
+main{height:calc(100dvh - 60px);display:grid;place-items:center;padding:16px;touch-action:none}
+.diary{width:min(900px,96vw);height:min(820px,calc(100dvh - 92px));padding:38px 46px 22px;background:#d9c79f;color:#302519;box-shadow:0 20px 70px #0008;border-radius:4px;position:relative;display:flex;flex-direction:column;touch-action:none}
+.page{position:absolute;top:15px;right:24px;font-size:12px;opacity:.55}
+#ink{width:100%;flex:1;min-height:0;display:block;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:crosshair}
+.controls{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px}
+button{border:1px solid #4b3a28;background:#efe1bc;color:#302519;padding:9px 15px;border-radius:5px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:disabled{opacity:.45;cursor:default}.hint{font-size:12px;opacity:.65}
+.reply{position:absolute;left:46px;right:46px;top:145px;bottom:110px;display:none;align-items:center;justify-content:center;text-align:center;font-family:serif;font-size:21px;line-height:1.8;color:#241b12;white-space:pre-wrap;padding:25px;pointer-events:none}
+.reply.show{display:flex}.fade{animation:fade 4.5s ease forwards}@keyframes fade{0%,65%{opacity:1}100%{opacity:0}}
+@media(max-width:600px){
+ header{height:54px;padding:0 14px}.status{font-size:12px}
+ main{height:calc(100dvh - 54px);padding:8px}
+ .diary{width:100%;height:calc(100dvh - 70px);padding:30px 16px 12px}
+ .reply{left:16px;right:16px;top:95px;bottom:75px;font-size:18px}
+ .hint{display:none}button{padding:8px 12px}
+}
 </style>
 </head>
 <body>
-<div class="diary" id="diary">
-  <canvas id="fireworks"></canvas>
-  <div class="paper">
-    <h1>ECHO DIARY</h1>
-    <div class="sub">直接在紙上手寫，不需要鍵盤。</div>
-    <div class="page">PAGE 01</div>
-    <canvas id="canvas"></canvas>
-    <div class="reply" id="reply"></div>
-    <div class="hint">寫完後，封存這一段。</div>
-    <div class="controls">
-      <button id="clear">清除</button>
-      <button id="seal">封存這一段</button>
-    </div>
-  </div>
-</div>
+<header><h1>ECHO DIARY</h1><div class="status" id="status">可以開始書寫</div></header>
+<main><section class="diary">
+<div class="page">PAGE <span id="page">01</span></div>
+<canvas id="ink"></canvas>
+<canvas id="fx" style="position:absolute;inset:0;pointer-events:none;"></canvas><div id="reply" class="reply"></div>
+<div class="controls"><span class="hint">直接在紙上手寫，不需要鍵盤。</span><div><button id="clear">清除</button> <button id="send">封存這一段</button></div></div>
+</section></main>
 <script>
-const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
-const reply=document.getElementById('reply'), clearBtn=document.getElementById('clear'), seal=document.getElementById('seal');
-let drawing=false, last=null, points=[];
+const c=document.querySelector('#ink'),ctx=c.getContext('2d'),send=document.querySelector('#send'),clear=document.querySelector('#clear'),status=document.querySelector('#status'),reply=document.querySelector('#reply');
+let drawing=false,hasInk=false,page=1,lastX=0,lastY=0;
 
-function resizeCanvas(){
-  const r=canvas.getBoundingClientRect(), d=Math.min(window.devicePixelRatio||1,2);
-  const old=document.createElement('canvas'); old.width=canvas.width; old.height=canvas.height;
-  if(canvas.width&&canvas.height) old.getContext('2d').drawImage(canvas,0,0);
-  canvas.width=Math.round(r.width*d); canvas.height=Math.round(r.height*d);
-  ctx.setTransform(d,0,0,d,0,0);
-  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=3.2;
-  if(old.width) ctx.drawImage(old,0,0,old.width,old.height,0,0,r.width,r.height);
+// Stronger iOS/Safari zoom prevention while keeping the canvas writable.
+document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTouchEnd<=320)e.preventDefault();lastTouchEnd=now},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
+
+function resize(){
+ const r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);
+ c.width=Math.max(1,Math.floor(r.width*d));c.height=Math.max(1,Math.floor(r.height*d));
+ ctx.setTransform(d,0,0,d,0,0);ctx.strokeStyle='#241b12';ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';
 }
-new ResizeObserver(resizeCanvas).observe(canvas);
+addEventListener('resize',resize);requestAnimationFrame(resize);
+function pos(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+c.addEventListener('pointerdown',e=>{e.preventDefault();if(e.pointerType==='touch'&&e.isPrimary===false)return;c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;[lastX,lastY]=pos(e);ctx.beginPath();ctx.moveTo(lastX,lastY)},{passive:false});
+c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const[x,y]=pos(e);const mx=(lastX+x)/2,my=(lastY+y)/2;ctx.quadraticCurveTo(lastX,lastY,mx,my);ctx.stroke();ctx.beginPath();ctx.moveTo(mx,my);lastX=x;lastY=y},{passive:false});
+function up(e){drawing=false;try{c.releasePointerCapture(e.pointerId)}catch{}}
+c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);c.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')up(e)});
+clear.addEventListener('click',()=>{ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false});
 
-function pos(e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top,t:performance.now()}}
-function drawSmooth(p){
-  if(!last){last=p;points=[p];return}
-  const mid={x:(last.x+p.x)/2,y:(last.y+p.y)/2};
-  ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.quadraticCurveTo(last.x,last.y,mid.x,mid.y);ctx.stroke();
-  last=p; points.push(p);
+// Export only the actual ink, on an opaque high-contrast background, cropped and enlarged.
+// This gives the vision model a much cleaner handwriting image than the full diary page.
+function image(){
+ const w=c.clientWidth,h=c.clientHeight;
+ const src=ctx.getImageData(0,0,c.width,c.height),data=src.data,d= c.width/w;
+ let minX=c.width,minY=c.height,maxX=-1,maxY=-1;
+ for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
+   const i=(y*c.width+x)*4;
+   if(data[i+3]>25 && data[i]<100){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+ }
+ if(maxX<0)return c.toDataURL('image/png');
+ const pad=Math.round(32*d);
+ minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(c.width-1,maxX+pad);maxY=Math.min(c.height-1,maxY+pad);
+ const cw=maxX-minX+1,ch=maxY-minY+1,scale=Math.min(2.5,1600/Math.max(cw,ch));
+ const out=document.createElement('canvas');out.width=Math.max(600,Math.round(cw*scale));out.height=Math.max(260,Math.round(ch*scale));
+ const o=out.getContext('2d');o.fillStyle='#fffdf6';o.fillRect(0,0,out.width,out.height);o.imageSmoothingEnabled=false;
+ const temp=document.createElement('canvas');temp.width=c.width;temp.height=c.height;temp.getContext('2d').putImageData(src,0,0);
+ o.drawImage(temp,minX,minY,cw,ch,0,0,out.width,out.height);
+ return out.toDataURL('image/png');
 }
-canvas.addEventListener('pointerdown',e=>{
-  e.preventDefault(); canvas.setPointerCapture(e.pointerId); drawing=true; last=pos(e); points=[last];
-  ctx.beginPath();ctx.arc(last.x,last.y,1.6,0,Math.PI*2);ctx.fill();
-},{passive:false});
-canvas.addEventListener('pointermove',e=>{
-  if(!drawing)return; e.preventDefault(); drawSmooth(pos(e));
-},{passive:false});
-function end(e){if(!drawing)return;e.preventDefault();drawing=false;last=null;points=[];try{canvas.releasePointerCapture(e.pointerId)}catch{}}
-canvas.addEventListener('pointerup',end,{passive:false});
-canvas.addEventListener('pointercancel',end,{passive:false});
-canvas.addEventListener('pointerleave',e=>{if(e.buttons===0)end(e)},{passive:false});
-
-clearBtn.onclick=()=>ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
-
-async function sealDiary(){
-  if(!canvas.width)return;
-  seal.disabled=true;
-  reply.classList.remove('show');
-  // Send only the drawing area, enlarged by the server.
-  const image=canvas.toDataURL('image/png');
-  try{
-    const res=await fetch('/api/diary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,page:1})});
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'request failed');
-    ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
-    reply.textContent='';
-    reply.classList.add('show');
-    let i=0; const text=data.reply||'……';
-    const timer=setInterval(()=>{reply.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(timer)},32);
-    if(data.birthday) launchFireworks();
-    setTimeout(()=>reply.classList.remove('show'),5200);
-  }catch(err){
-    reply.textContent='這一頁沒有聽清楚，再寫一次吧。';
-    reply.classList.add('show');
-    setTimeout(()=>reply.classList.remove('show'),3000);
-  }finally{seal.disabled=false}
+function clearInk(){ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false}
+function type(text){
+ reply.textContent='';reply.className='reply show';let i=0;
+ const t=setInterval(()=>{reply.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(t)},22);
+ setTimeout(()=>{reply.classList.add('fade');setTimeout(()=>{reply.className='reply';reply.textContent=''},4700)},Math.max(4300,text.length*22+1600));
 }
 
-// Prevent Safari gesture/double-tap zoom.
-['gesturestart','gesturechange','gestureend'].forEach(type=>document.addEventListener(type,e=>e.preventDefault(),{passive:false}));
-let lastTouch=0;
-document.addEventListener('touchend',e=>{
-  const now=Date.now(); if(now-lastTouch<300)e.preventDefault(); lastTouch=now;
-},{passive:false});
+const fx=document.querySelector('#fx'),fctx=fx.getContext('2d');
+function fire(){const r=fx.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);fx.width=r.width*d;fx.height=r.height*d;fctx.setTransform(d,0,0,d,0,0);const W=r.width,H=r.height;let ps=[];for(let n=0;n<7;n++){const cx=Math.random()*W,cy=H*.2+Math.random()*H*.35;for(let i=0;i<60;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*4;ps.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:50+Math.random()*20})}}(function loop(){fctx.clearRect(0,0,W,H);ps=ps.filter(p=>p.l-->0);for(const p of ps){p.x+=p.vx;p.y+=p.vy;p.vy+=.05;fctx.fillStyle=`hsl(${(p.l*7)%360} 100% 60%)`;fctx.fillRect(p.x,p.y,3,3)}if(ps.length)requestAnimationFrame(loop);else fctx.clearRect(0,0,W,H)})();}
 
-const fw=document.getElementById('fireworks'), fctx=fw.getContext('2d');
-function launchFireworks(){
-  fw.width=fw.clientWidth*devicePixelRatio; fw.height=fw.clientHeight*devicePixelRatio;
-  fctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-  const W=fw.clientWidth,H=fw.clientHeight, sparks=[];
-  for(let k=0;k<7;k++){
-    const cx=W*(.15+Math.random()*.7), cy=H*(.18+Math.random()*.42);
-    for(let i=0;i<55;i++){
-      const a=Math.random()*Math.PI*2, s=1.2+Math.random()*3.8;
-      sparks.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:45+Math.random()*35});
-    }
-  }
-  fw.classList.add('show');
-  function frame(){
-    fctx.clearRect(0,0,W,H);
-    for(const p of sparks){
-      if(p.life<=0)continue;
-      p.x+=p.vx;p.y+=p.vy;p.vy+=.045;p.life-=1;
-      fctx.globalAlpha=Math.max(0,p.life/75);
-      fctx.beginPath();fctx.arc(p.x,p.y,2,0,Math.PI*2);fctx.fill();
-    }
-    fctx.globalAlpha=1;
-    if(sparks.some(p=>p.life>0))requestAnimationFrame(frame);
-    else fw.classList.remove('show');
-  }
-  requestAnimationFrame(frame);
-}
+send.addEventListener('click',async()=>{
+ if(!hasInk||send.disabled)return;
+ send.disabled=clear.disabled=true;status.textContent='正在讀取你的字……';
+ try{
+  const r=await fetch('/api/diary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:image(),page})});
+  if(!r.ok)throw new Error(await r.text());
+  const data=await r.json();clearInk();status.textContent='日記已回答';type(data.reply||'我還沒有看清這一頁。');if(data.special==='birthday')fire();
+  page++;document.querySelector('#page').textContent=String(page).padStart(2,'0');
+ }catch(e){console.error(e);status.textContent='AI 暫時無法回應';alert('AI 暫時沒有回應，請稍後再試。')}
+ finally{send.disabled=clear.disabled=false}
+});
 </script>
 </body>
 </html>
