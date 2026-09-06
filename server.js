@@ -5,76 +5,63 @@ const path = require("path");
 const app = express();
 app.use(express.json({ limit: "12mb" }));
 app.use(express.static(__dirname));
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
-app.post("/api/diary", async (req, res) => {
-  try {
-    const { image, page } = req.body || {};
-    if (typeof image !== "string" || !image.startsWith("data:image/")) {
-      return res.status(400).json({ error: "invalid image" });
-    }
+app.get("/", (req,res)=>res.sendFile(path.join(__dirname,"index.html")));
 
+app.post("/api/diary", async (req,res)=>{
+  try{
+    const { image } = req.body || {};
+    if(!image || !image.startsWith("data:image/")) return res.status(400).json({error:"invalid image"});
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Pass 1: transcription only. This prevents the model from inventing a diary reply
-    // before it has established what is actually written.
-    const transcription = await client.responses.create({
+    const response = await client.responses.create({
       model: "gpt-5.6-luna",
       input: [{
         role: "user",
         content: [
-          {
-            type: "input_text",
-            text: `這是一張「Echo Diary」使用者手寫內容的近距離圖片。
-請只做「繁體中文手寫文字轉錄」，不要聊天、不要創作、不要猜測故事。
+          {type:"input_text", text:
+`你是 Echo Diary 的手寫辨識與回覆者。
+請只處理這張圖片中的「使用者手寫筆跡」，忽略紙張、按鈕、裝飾和介面文字。
+
+第一步：仔細辨識手寫內容，尤其是數字。不要因為看不清楚就自行補成常見句子。
+第二步：根據你真正辨識到的內容產生回覆。
+
+請嚴格輸出 JSON，不要輸出 Markdown：
+{"transcription":"你辨識到的手寫原文","reply":"給使用者的回覆","birthday":true或false}
+
 規則：
-1. 只讀圖片中深色手寫筆畫，不要把紙張、按鈕、PAGE、標題或其他介面文字當成使用者內容。
-2. 由左到右、由上到下轉錄。
-3. 看不清楚的字請用「□」表示，絕對不要自行補成另一個句子。
-4. 如果只有一個很短的詞或問候語，就只輸出那個詞。
-5. 只輸出轉錄文字本身，不要加引號、解釋或標點說明。
-6. 這次頁碼是 ${page}。`
+- transcription 只能填你確定看見的手寫內容；看不清楚時填空字串。
+- 如果 transcription 完全是「1024」（允許前後空白），reply 必須是「生日快樂！」，birthday 必須是 true。
+- 如果手寫內容不是 1024，birthday 必須是 false。
+- 一般 reply 必須明確提到手寫內容中的至少一個具體細節。
+- 如果辨識不清楚，reply 請簡短說「我沒有聽清楚這一筆，再寫一次吧。」不要猜。
+- 使用繁體中文，40～90字；「1024」的生日回覆除外。
+- 不要提到 AI、模型、OCR、API、圖片或辨識技術。
+- 不要模仿任何既有作品或角色。`
           },
-          { type: "input_image", image_url: image }
+          {type:"input_image", image_url:image}
         ]
       }]
     });
 
-    const transcript = (transcription.output_text || "").trim();
-    if (!transcript || transcript === "□") {
-      return res.json({ reply: "我還沒有看清這一頁，請再寫得清楚一些。" });
+    const raw = response.output_text || "";
+    let data;
+    try { data = JSON.parse(raw); }
+    catch {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if(!m) throw new Error("invalid model output");
+      data = JSON.parse(m[0]);
     }
 
-    // Pass 2: answer strictly from the transcript. The transcript is also shown in the
-    // model prompt so the reply cannot casually switch to an unrelated imagined topic.
-    const answer = await client.responses.create({
-      model: "gpt-5.6-luna",
-      input: [{
-        role: "user",
-        content: [{
-          type: "input_text",
-          text: `你是「Echo Diary」的回聲。
-使用者剛剛真正寫下的內容，經過逐字轉錄後是：
-【${transcript}】
-
-請只根據上面這段內容回應。
-- 回覆必須明確提到或回應其中至少一個實際詞語、事情或意思。
-- 絕對不要加入轉錄內容沒有出現的天氣、人物、事件、地點或故事。
-- 如果內容只是「你好」這類簡短問候，就直接回應問候，不要自行延伸成別的事件。
-- 如果轉錄含有「□」，不要猜測□代表什麼。
-- 使用繁體中文，約 20–60 字，安靜、神秘、溫和，像一本原創神秘日記的回聲。
-- 不要提到 AI、模型、OCR、API、圖片、伺服器或轉錄。
-- 不要模仿任何現有作品或角色。
-只輸出回覆文字。`
-        }]
-      }]
-    });
-
-    res.json({ reply: (answer.output_text || "").trim() || "我聽見了你的字。" });
-  } catch (err) {
+    const transcription = String(data.transcription || "").trim();
+    const birthday = transcription === "1024";
+    const reply = birthday ? "生日快樂！" : String(data.reply || "我沒有聽清楚這一筆，再寫一次吧。");
+    res.json({ transcription, reply, birthday });
+  }catch(err){
     console.error(err);
-    res.status(500).json({ error: "AI request failed" });
+    res.status(500).json({error:"diary request failed"});
   }
 });
 
-app.listen(process.env.PORT || 3000, () => console.log("Echo Diary V8 running"));
+const port = process.env.PORT || 3000;
+app.listen(port,()=>console.log(`Echo Diary V9 listening on ${port}`));
