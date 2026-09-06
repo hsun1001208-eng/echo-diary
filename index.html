@@ -66,7 +66,7 @@ function resize(){
 }
 addEventListener('resize',resize);requestAnimationFrame(resize);
 function pos(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
-c.addEventListener('pointerdown',e=>{e.preventDefault();if(e.pointerType==='touch'&&e.isPrimary===false)return;c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y)},{passive:false});
+c.addEventListener('pointerdown',e=>{e.preventDefault();if(e.pointerType==='touch'&&e.isPrimary===false)return;c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);lastX=x;lastY=y},{passive:false});
 c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const[x,y]=pos(e);const mx=(lastX+x)/2,my=(lastY+y)/2;ctx.quadraticCurveTo(lastX,lastY,mx,my);ctx.stroke();ctx.beginPath();ctx.moveTo(mx,my);lastX=x;lastY=y},{passive:false});
 function up(e){drawing=false;try{c.releasePointerCapture(e.pointerId)}catch{}}
 c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);c.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')up(e)});
