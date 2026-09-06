@@ -28,14 +28,14 @@ button:disabled{opacity:.45;cursor:default}.hint{font-size:12px;opacity:.65}
  .hint{display:none}button{padding:8px 12px}
 }
 
-#fireworks{position:fixed;inset:0;width:100vw;height:100vh;display:none;pointer-events:none;z-index:9999}
+#fireworks{position:fixed;inset:0;width:100vw;height:100vh;display:none;pointer-events:none;z-index:900}
 #inkveil{position:fixed;inset:0;opacity:0;pointer-events:none;background:radial-gradient(circle,rgba(30,20,10,.12),rgba(0,0,0,.62));transition:.6s}
 #inkblob{position:fixed;width:18px;height:18px;border-radius:50%;background:#120f0c;filter:blur(2px);opacity:0;pointer-events:none}
 @keyframes blob{0%{opacity:0;transform:scale(.2)}35%{opacity:1;transform:scale(3)}100%{opacity:0;transform:scale(0)}}
 body{background:linear-gradient(#1a130d,#080605);perspective:1200px}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 20% 15%,rgba(255,220,140,.1),transparent 30%),radial-gradient(circle at 80% 20%,rgba(255,180,90,.08),transparent 35%);animation:flicker 4s ease-in-out infinite alternate}
 @keyframes flicker{from{opacity:.8}to{opacity:1}}
-#reply{transition:filter .5s ease}
+#reply{position:relative;z-index:10001;transition:filter .5s ease}
 #reply.magic{filter:drop-shadow(0 0 8px rgba(255,240,180,.8))}
 </style>
 </head>
