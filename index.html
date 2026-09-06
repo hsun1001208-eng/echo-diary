@@ -27,14 +27,19 @@ button:disabled{opacity:.45;cursor:default}.hint{font-size:12px;opacity:.65}
  .reply{left:16px;right:16px;top:95px;bottom:75px;font-size:18px}
  .hint{display:none}button{padding:8px 12px}
 }
-#fireworks{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none;z-index:9999}@keyframes fadeInk{0%{transform:scale(.2);opacity:0}50%{transform:scale(2);opacity:.9}100%{transform:scale(0);opacity:0}}
-body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle at 20% 15%,rgba(255,220,140,.08),transparent 30%),radial-gradient(circle at 80% 20%,rgba(255,180,90,.06),transparent 35%);pointer-events:none;animation:paperGlow 6s ease-in-out infinite alternate;}
-@keyframes paperGlow{from{opacity:.75}to{opacity:1}}
+
+#fireworks{position:fixed;inset:0;width:100vw;height:100vh;display:none;pointer-events:none;z-index:9999}
+#inkveil{position:fixed;inset:0;opacity:0;pointer-events:none;background:radial-gradient(circle,rgba(30,20,10,.12),rgba(0,0,0,.62));transition:.6s}
+#inkblob{position:fixed;width:18px;height:18px;border-radius:50%;background:#120f0c;filter:blur(2px);opacity:0;pointer-events:none}
+@keyframes blob{0%{opacity:0;transform:scale(.2)}35%{opacity:1;transform:scale(3)}100%{opacity:0;transform:scale(0)}}
+body{background:linear-gradient(#1a130d,#080605);perspective:1200px}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 20% 15%,rgba(255,220,140,.1),transparent 30%),radial-gradient(circle at 80% 20%,rgba(255,180,90,.08),transparent 35%);animation:flicker 4s ease-in-out infinite alternate}
+@keyframes flicker{from{opacity:.8}to{opacity:1}}
 #reply{transition:filter .5s ease}
 #reply.magic{filter:drop-shadow(0 0 8px rgba(255,240,180,.8))}
 </style>
 </head>
-<body><canvas id='fireworks'></canvas>
+<body><div id="inkveil"></div><div id="inkblob"></div><canvas id="fireworks"></canvas>
 <header><h1>ECHO DIARY</h1><div class="status" id="status">可以開始書寫</div></header>
 <main><section class="diary">
 <div class="page">PAGE <span id="page">01</span></div>
@@ -43,8 +48,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle
 <div class="controls"><span class="hint">直接在紙上手寫，不需要鍵盤。</span><div><button id="clear">清除</button> <button id="send">封存這一段</button></div></div>
 </section></main>
 <script>
-const c=document.querySelector('#ink'),ctx=c.getContext('2d'),send=document.querySelector('#send'),clear=document.querySelector('#clear'),status=document.querySelector('#status'),reply=document.querySelector('#reply'),fw=document.querySelector('#fireworks'),fwctx=fw.getContext('2d');
-let drawing=false,hasInk=false,page=1,lastX=0,lastY=0;
+const c=document.querySelector('#ink'),ctx=c.getContext('2d'),send=document.querySelector('#send'),clear=document.querySelector('#clear'),status=document.querySelector('#status'),reply=document.querySelector('#reply');
+let drawing=false,hasInk=false,page=1;
 
 // Stronger iOS/Safari zoom prevention while keeping the canvas writable.
 document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
@@ -61,8 +66,8 @@ function resize(){
 }
 addEventListener('resize',resize);requestAnimationFrame(resize);
 function pos(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
-c.addEventListener('pointerdown',e=>{e.preventDefault();if(e.pointerType==='touch'&&e.isPrimary===false)return;c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);lastX=x;lastY=y},{passive:false});
-c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const[x,y]=pos(e);const mx=(lastX+x)/2,my=(lastY+y)/2;ctx.quadraticCurveTo(lastX,lastY,mx,my);ctx.stroke();ctx.beginPath();ctx.moveTo(mx,my);lastX=x;lastY=y;lastX=x;lastY=y},{passive:false});
+c.addEventListener('pointerdown',e=>{e.preventDefault();if(e.pointerType==='touch'&&e.isPrimary===false)return;c.setPointerCapture(e.pointerId);drawing=true;hasInk=true;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y)},{passive:false});
+c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const[x,y]=pos(e);const mx=(lastX+x)/2,my=(lastY+y)/2;ctx.quadraticCurveTo(lastX,lastY,mx,my);ctx.stroke();ctx.beginPath();ctx.moveTo(mx,my);lastX=x;lastY=y},{passive:false});
 function up(e){drawing=false;try{c.releasePointerCapture(e.pointerId)}catch{}}
 c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);c.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')up(e)});
 clear.addEventListener('click',()=>{ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false});
@@ -77,7 +82,7 @@ function image(){
    const i=(y*c.width+x)*4;
    if(data[i+3]>25 && data[i]<100){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
  }
- if(maxX<0)return c.toDataURL('image/png');
+ if(maxX<0)return preprocessCanvas(c).toDataURL('image/png');
  const pad=Math.round(32*d);
  minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(c.width-1,maxX+pad);maxY=Math.min(c.height-1,maxY+pad);
  const cw=maxX-minX+1,ch=maxY-minY+1,scale=Math.min(2.5,1600/Math.max(cw,ch));
@@ -88,30 +93,8 @@ function image(){
  return out.toDataURL('image/png');
 }
 function clearInk(){ctx.clearRect(0,0,c.clientWidth,c.clientHeight);hasInk=false}
-function fireworks(){
-fw.width=window.innerWidth; fw.height=window.innerHeight;
-fw.style.position='fixed';fw.style.left='0';fw.style.top='0';
-fw.style.width='100vw';fw.style.height='100vh';
-fw.style.display='block';
-const P=[];const rockets=[];
-for(let i=0;i<36;i++) rockets.push({x:Math.random()*fw.width,y:fw.height+Math.random()*200,tx:Math.random()*fw.width,ty:Math.random()*fw.height*0.45+40,v:4+Math.random()*2});
-(function anim(){
-fwctx.fillStyle='rgba(0,0,0,0.08)';fwctx.fillRect(0,0,fw.width,fw.height);
-rockets.forEach(r=>{
- if(r.done) return;
- let dx=r.tx-r.x,dy=r.ty-r.y,d=Math.hypot(dx,dy);
- if(d<8){r.done=true; for(let k=0;k<220;k++){let a=Math.random()*Math.PI*2,s=2+Math.random()*8;P.push({x:r.x,y:r.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:120})}}
- else{r.x+=dx/d*r.v;r.y+=dy/d*r.v;fwctx.fillStyle='white';fwctx.fillRect(r.x,r.y,2,8);}
-});
-fwctx.globalCompositeOperation='lighter';
-P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.045;p.l--;fwctx.fillStyle=`hsla(${(p.l*4)%360},100%,60%,${p.l/120})`;fwctx.beginPath();fwctx.arc(p.x,p.y,2.2,0,Math.PI*2);fwctx.fill();});
-fwctx.globalCompositeOperation='source-over';
-if(P.some(p=>p.l>0)||rockets.some(r=>!r.done)) requestAnimationFrame(anim);
-else{fwctx.clearRect(0,0,fw.width,fw.height);fw.style.display='none';}
-})();
-}
-function inkDrop(x,y){const d=document.createElement('div');d.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:8px;height:8px;background:#111;border-radius:50%;filter:blur(1px);animation:fadeInk .7s forwards`;document.body.appendChild(d);setTimeout(()=>d.remove(),700)} function type(text){
- reply.textContent='';reply.classList.add('magic');reply.style.textShadow='0 0 8px rgba(255,240,180,.6)';reply.className='reply show';let i=0;
+function type(text){
+ reply.textContent='';cinematicIntro();reply.className='reply show';let i=0;
  const t=setInterval(()=>{reply.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(t)},22);
  setTimeout(()=>{reply.classList.add('fade');setTimeout(()=>{reply.className='reply';reply.textContent=''},4700)},Math.max(4300,text.length*22+1600));
 }
@@ -126,6 +109,13 @@ send.addEventListener('click',async()=>{
  }catch(e){console.error(e);status.textContent='AI 暫時無法回應';alert('AI 暫時沒有回應，請稍後再試。')}
  finally{send.disabled=clear.disabled=false}
 });
+
+const fw=document.getElementById('fireworks'),fwctx=fw.getContext('2d');
+const veil=document.getElementById('inkveil'),blob=document.getElementById('inkblob');
+document.addEventListener('mousemove',e=>{const p=document.querySelector('#book,#diary,.paper');if(!p)return;p.style.transform=`rotateX(${(innerHeight/2-e.clientY)/35}deg) rotateY(${(e.clientX-innerWidth/2)/35}deg)`});
+function cinematicIntro(){veil.style.opacity='1';const r=reply.getBoundingClientRect();blob.style.left=(r.left+r.width/2-9)+'px';blob.style.top=(r.top+18)+'px';blob.style.animation='none';void blob.offsetWidth;blob.style.animation='blob .9s ease forwards';setTimeout(()=>veil.style.opacity='0',900);reply.classList.add('magic')}
+function preprocessCanvas(src){const t=document.createElement('canvas');t.width=src.width;t.height=src.height;const c=t.getContext('2d');c.filter='contrast(180%) brightness(115%)';c.drawImage(src,0,0);const img=c.getImageData(0,0,t.width,t.height),d=img.data;for(let i=0;i<d.length;i+=4){const g=(d[i]+d[i+1]+d[i+2])/3,v=g>205?255:0;d[i]=d[i+1]=d[i+2]=v}c.putImageData(img,0,0);c.globalCompositeOperation='multiply';c.drawImage(t,-1,0);c.drawImage(t,1,0);return t}
+function fireworks(){fw.width=innerWidth;fw.height=innerHeight;fw.style.display='block';const P=[],R=[];for(let i=0;i<36;i++)R.push({x:Math.random()*fw.width,y:fw.height+Math.random()*200,tx:Math.random()*fw.width,ty:Math.random()*fw.height*.45+40,v:4+Math.random()*2});(function a(){fwctx.fillStyle='rgba(0,0,0,.08)';fwctx.fillRect(0,0,fw.width,fw.height);R.forEach(r=>{if(r.done)return;let dx=r.tx-r.x,dy=r.ty-r.y,d=Math.hypot(dx,dy);if(d<8){r.done=true;for(let k=0;k<220;k++){let A=Math.random()*Math.PI*2,S=2+Math.random()*8;P.push({x:r.x,y:r.y,vx:Math.cos(A)*S,vy:Math.sin(A)*S,l:120})}}else{r.x+=dx/d*r.v;r.y+=dy/d*r.v;fwctx.fillStyle='white';fwctx.fillRect(r.x,r.y,2,8)}});fwctx.globalCompositeOperation='lighter';P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.045;p.l--;fwctx.fillStyle=`hsla(${(p.l*4)%360},100%,60%,${p.l/120})`;fwctx.beginPath();fwctx.arc(p.x,p.y,2.2,0,Math.PI*2);fwctx.fill()});fwctx.globalCompositeOperation='source-over';if(P.some(p=>p.l>0)||R.some(r=>!r.done))requestAnimationFrame(a);else{fwctx.clearRect(0,0,fw.width,fw.height);fw.style.display='none'}})()}
 </script>
 </body>
 </html>
