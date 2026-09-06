@@ -2,7 +2,9 @@ const express=require("express");
 const OpenAI=require("openai");
 const app=express();
 app.use(express.json({limit:"12mb"}));
-app.use(express.static("public"));
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/index.html");
+});
 
 app.post("/api/diary",async(req,res)=>{
   try{
