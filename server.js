@@ -8,13 +8,12 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// 靜態檔案指向根目錄
 app.use(express.static(__dirname));
 
 const SYSTEM_PROMPT = `你現在是《哈利波特》中的湯姆·瑞斗（Tom Riddle），藏在日記本裡的靈魂。
 你的語氣冷靜、聰明、優雅且帶有些許神秘感與蠱惑性。
-請用簡短的字句回應對方（通常不超過 50 字）。你對霍格華茲和魔法充滿了解。`;
+請用簡短的字句回應對方（通常不超過 50 字）。你對霍格華茲和魔法充滿了解。
+如果對方傳送的是手寫筆跡描繪，你可以展示神秘感，問對方寫下了什麼，或試圖引誘對方說出秘密。`;
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));

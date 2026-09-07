@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tom Riddle's Diary - 湯姆瑞斗的日記</title>
+  <title>Tom Riddle's Diary - 湯姆瑞斗的魔法日記</title>
   <style>
     * {
       box-sizing: border-box;
@@ -34,14 +34,14 @@
       z-index: 2;
       width: 90%;
       max-width: 650px;
-      height: 80vh;
+      height: 85vh;
       background: #e8d8b8;
       background-image: radial-gradient(#d0be96 15%, transparent 16%);
       background-size: 20px 20px;
       border: 12px solid #2b1d0c;
       border-radius: 8px;
       box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 50px rgba(0, 0, 0, 0.3);
-      padding: 40px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
     }
@@ -50,9 +50,9 @@
       font-size: 1.2rem;
       color: #5c4a38;
       letter-spacing: 2px;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       border-bottom: 1px solid #b5a484;
-      padding-bottom: 10px;
+      padding-bottom: 5px;
       font-weight: bold;
     }
     .conversation-area {
@@ -60,8 +60,9 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 15px;
       padding-right: 10px;
+      position: relative;
     }
     .message {
       font-size: 1.2rem;
@@ -70,12 +71,14 @@
       word-wrap: break-word;
       transition: opacity 1.5s ease;
     }
-    .user-message {
+    .user-handwriting-img {
+      max-width: 75%;
+      height: auto;
       align-self: flex-start;
-      color: #1a0f00;
-      font-style: italic;
+      filter: sepia(0.6) contrast(1.3);
+      transition: opacity 1.5s ease;
     }
-    .user-message.fade-out {
+    .user-handwriting-img.fade-out {
       opacity: 0;
     }
     .riddle-message {
@@ -89,12 +92,45 @@
       0% { opacity: 0; filter: blur(4px); }
       100% { opacity: 1; filter: blur(0); }
     }
-    .input-area {
-      margin-top: 20px;
+    .mode-switch {
       display: flex;
       gap: 10px;
+      margin-bottom: 8px;
     }
-    input[type="text"] {
+    .tab-btn {
+      flex: 1;
+      background: #3b2814;
+      color: #b5a484;
+      border: none;
+      padding: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border-radius: 4px 4px 0 0;
+      transition: 0.3s;
+    }
+    .tab-btn.active {
+      background: #2b1d0c;
+      color: #e8d8b8;
+      font-weight: bold;
+    }
+    .input-section {
+      background: rgba(43, 29, 12, 0.05);
+      border: 1px dashed #5c4a38;
+      border-radius: 0 0 6px 6px;
+      padding: 10px;
+    }
+    canvas#drawing-canvas {
+      width: 100%;
+      height: 110px;
+      background: transparent;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .text-input-wrapper {
+      display: none;
+      gap: 10px;
+    }
+    .text-input-wrapper input {
       flex: 1;
       background: transparent;
       border: none;
@@ -102,21 +138,31 @@
       font-family: 'Georgia', serif;
       font-size: 1.1rem;
       color: #2b1d0c;
-      padding: 8px;
+      padding: 6px;
       outline: none;
     }
-    button {
+    .btn-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+    }
+    .hint-text {
+      font-size: 0.8rem;
+      color: #7c6853;
+    }
+    button.action-btn {
       background: #2b1d0c;
       color: #e8d8b8;
       border: none;
-      padding: 8px 18px;
+      padding: 6px 14px;
       font-family: 'Georgia', serif;
       cursor: pointer;
       border-radius: 4px;
-      transition: background 0.3s;
+      font-size: 0.9rem;
     }
-    button:hover {
-      background: #4a3418;
+    button.clear-btn {
+      background: #5c4a38;
     }
   </style>
 </head>
@@ -127,43 +173,128 @@
   <div class="diary-container">
     <div class="diary-header">T. M. RIDDLE</div>
     <div class="conversation-area" id="conversation"></div>
-    <div class="input-area">
-      <input type="text" id="userInput" placeholder="在日記本上寫字..." autocomplete="off" />
-      <button onclick="handleSend()">寫下</button>
+    
+    <div class="mode-switch">
+      <button class="tab-btn active" id="tab-draw" onclick="switchMode('draw')">🖋️ 手寫板 (Canvas)</button>
+      <button class="tab-btn" id="tab-text" onclick="switchMode('text')">⌨️ 打字與精準彩蛋</button>
+    </div>
+
+    <div class="input-section">
+      <!-- 手寫區域 -->
+      <div id="draw-wrapper">
+        <canvas id="drawing-canvas"></canvas>
+        <div class="btn-group">
+          <span class="hint-text">用滑鼠或手指在上方書寫墨跡</span>
+          <div>
+            <button class="action-btn clear-btn" onclick="clearCanvas()">清除</button>
+            <button class="action-btn" onclick="sendHandwriting()">寫下墨跡</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 打字區域 -->
+      <div id="text-wrapper" class="text-input-wrapper">
+        <input type="text" id="userInput" placeholder="寫下任何話（輸入 1024 觸發生日彩蛋）..." autocomplete="off" />
+        <button class="action-btn" onclick="sendText()">寫下</button>
+      </div>
     </div>
   </div>
 
   <script>
     const conversation = document.getElementById('conversation');
+    const drawCanvas = document.getElementById('drawing-canvas');
+    const drawCtx = drawCanvas.getContext('2d');
     const userInput = document.getElementById('userInput');
+    let isDrawing = false;
+    let hasDrawn = false;
+    let currentMode = 'draw';
 
-    userInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleSend();
-    });
+    // 初始化手寫 Canvas
+    function initDrawCanvas() {
+      drawCanvas.width = drawCanvas.offsetWidth;
+      drawCanvas.height = drawCanvas.offsetHeight;
+      drawCtx.strokeStyle = '#1a0f00';
+      drawCtx.lineWidth = 3;
+      drawCtx.lineCap = 'round';
+      drawCtx.lineJoin = 'round';
+    }
+    window.addEventListener('resize', initDrawCanvas);
+    setTimeout(initDrawCanvas, 100);
 
-    async function handleSend() {
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('tab-draw').classList.toggle('active', mode === 'draw');
+      document.getElementById('tab-text').classList.toggle('active', mode === 'text');
+      document.getElementById('draw-wrapper').style.display = mode === 'draw' ? 'block' : 'none';
+      document.getElementById('text-wrapper').style.display = mode === 'text' ? 'flex' : 'none';
+      if (mode === 'draw') setTimeout(initDrawCanvas, 50);
+    }
+
+    // 繪圖邏輯
+    function startDrawing(e) { isDrawing = true; hasDrawn = true; const p = getPos(e); drawCtx.beginPath(); drawCtx.moveTo(p.x, p.y); }
+    function draw(e) { if (!isDrawing) return; const p = getPos(e); drawCtx.lineTo(p.x, p.y); drawCtx.stroke(); }
+    function stopDrawing() { isDrawing = false; }
+    function getPos(e) {
+      const rect = drawCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    drawCanvas.addEventListener('mousedown', startDrawing);
+    drawCanvas.addEventListener('mousemove', draw);
+    drawCanvas.addEventListener('mouseup', stopDrawing);
+    drawCanvas.addEventListener('mouseleave', stopDrawing);
+    drawCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); });
+    drawCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+    drawCanvas.addEventListener('touchend', stopDrawing);
+
+    function clearCanvas() {
+      drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+      hasDrawn = false;
+    }
+
+    // 發送手寫
+    async function sendHandwriting() {
+      if (!hasDrawn) return;
+      const dataURL = drawCanvas.toDataURL('image/png');
+      const img = document.createElement('img');
+      img.src = dataURL;
+      img.className = 'user-handwriting-img';
+      conversation.appendChild(img);
+      conversation.scrollTop = conversation.scrollHeight;
+
+      clearCanvas();
+
+      setTimeout(() => img.classList.add('fade-out'), 1500);
+
+      // 預設發送手寫提示詞
+      setTimeout(async () => {
+        const reply = await fetchAIReply("（對方在日記本上畫了幾道手寫墨跡與筆劃）");
+        showRiddleReply(reply);
+      }, 2000);
+    }
+
+    // 發送純文字（確保彩蛋 100% 觸發，且 AI 能完美對話）
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendText(); });
+
+    async function sendText() {
       const text = userInput.value.trim();
       if (!text) return;
-
       userInput.value = '';
 
-      // 顯示使用者寫下的字
       const userMsgDiv = document.createElement('div');
-      userMsgDiv.className = 'message user-message';
+      userMsgDiv.className = 'message';
+      userMsgDiv.style.color = '#1a0f00';
+      userMsgDiv.style.fontStyle = 'italic';
       userMsgDiv.textContent = text;
       conversation.appendChild(userMsgDiv);
       conversation.scrollTop = conversation.scrollHeight;
 
-      // 模擬墨水滲透消失（字體淡出）
-      setTimeout(() => {
-        userMsgDiv.classList.add('fade-out');
-      }, 1500);
+      setTimeout(() => userMsgDiv.classList.add('fade-out'), 1500);
 
-      // 判斷彩蛋或呼叫 AI
       if (text === '1024') {
-        setTimeout(() => {
-          triggerEasterEgg();
-        }, 2000);
+        setTimeout(triggerEasterEgg, 2000);
       } else {
         setTimeout(async () => {
           const reply = await fetchAIReply(text);
@@ -180,13 +311,11 @@
       conversation.scrollTop = conversation.scrollHeight;
     }
 
-    // 彩蛋處理邏輯
     function triggerEasterEgg() {
       showRiddleReply("吳悠生日快樂");
       startFireworks();
     }
 
-    // AI 回應介接 (可連線後端 API /api/chat)
     async function fetchAIReply(prompt) {
       try {
         const response = await fetch('/api/chat', {
@@ -194,11 +323,10 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: prompt })
         });
-        if (!response.ok) throw new Error('Network response was not ok');
+        if (!response.ok) throw new Error('Network error');
         const data = await response.json();
         return data.reply;
       } catch (err) {
-        // 後端未連接或展示時的備用回應邏輯
         const fallbackReplies = [
           "你好，我是湯姆·瑞斗。你是怎麼拿到我的日記的？",
           "有些秘密，只有寫在紙上才能保存下來……",
@@ -209,15 +337,12 @@
       }
     }
 
-    // 煙火特效 Canvas 邏輯
+    // 煙火動畫
     const canvas = document.getElementById('canvas-fireworks');
     const ctx = canvas.getContext('2d');
     let particles = [];
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
@@ -240,40 +365,21 @@
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 / count) * i;
         const speed = Math.random() * 6 + 2;
-        particles.push({
-          x, y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          alpha: 1,
-          color
-        });
+        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, alpha: 1, color });
       }
     }
 
     function animateFireworks() {
       ctx.fillStyle = 'rgba(18, 18, 18, 0.2)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
       particles.forEach((p, index) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.05; // 重力效果
-        p.alpha -= 0.012;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = Math.max(p.alpha, 0);
-        ctx.fill();
-
+        p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.alpha -= 0.012;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(p.alpha, 0); ctx.fill();
         if (p.alpha <= 0) particles.splice(index, 1);
       });
-
-      if (particles.length > 0) {
-        requestAnimationFrame(animateFireworks);
-      } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      if (particles.length > 0) requestAnimationFrame(animateFireworks);
+      else ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   </script>
 </body>

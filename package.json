@@ -1,7 +1,7 @@
 {
-  "name": "tom-riddle-diary",
+  "name": "tom-riddle-diary-dual-mode",
   "version": "1.0.0",
-  "description": "Tom Riddle Diary interactive web application with birthday easter egg and fireworks.",
+  "description": "Tom Riddle Diary with dual handwriting and text mode for guaranteed easter egg trigger.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
