@@ -1,3 +1,8 @@
+
+
+app.get("/health",(req,res)=>{
+  res.json({status:"ok",version:"V16"});
+});
 const express = require("express");
 const OpenAI = require("openai");
 const path = require("path");
@@ -6,7 +11,6 @@ const app = express();
 app.use(express.json({ limit: "12mb" }));
 app.use(express.static(__dirname));
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
-app.get("/health",(req,res)=>res.json({status:"ok",version:"V15"}));
 
 app.post("/api/diary", async (req, res) => {
   try {
@@ -20,7 +24,7 @@ app.post("/api/diary", async (req, res) => {
     // Pass 1: transcription only. This prevents the model from inventing a diary reply
     // before it has established what is actually written.
     const transcription = await client.responses.create({
-      model: "gpt-5.6-luna",
+      model: "gpt-5.6",
       input: [{
         role: "user",
         content: [
@@ -42,15 +46,21 @@ app.post("/api/diary", async (req, res) => {
     });
 
     const transcript = (transcription.output_text || "").trim();
-    if (/(^|\D)1024(\D|$)/.test(transcript)) { return res.json({reply:"生日快樂。\n願今天的願望被好好收藏，也願下一頁仍有值得期待的故事。",special:"birthday"}); }
     if (!transcript || transcript === "□") {
       return res.json({ reply: "我還沒有看清這一頁，請再寫得清楚一些。" });
     }
 
     // Pass 2: answer strictly from the transcript. The transcript is also shown in the
     // model prompt so the reply cannot casually switch to an unrelated imagined topic.
+    if (/(^|\D)1024(\D|$)/.test(transcript)) {
+      return res.json({
+        reply:"生日快樂。願今天的願望被好好收藏，也願下一頁仍有值得期待的故事。",
+        special:"birthday"
+      });
+    }
+
     const answer = await client.responses.create({
-      model: "gpt-5.6-luna",
+      model: "gpt-5.6",
       input: [{
         role: "user",
         content: [{
@@ -75,7 +85,7 @@ app.post("/api/diary", async (req, res) => {
     res.json({ reply: (answer.output_text || "").trim() || "我聽見了你的字。" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ reply:"日記沉默了一會兒，請再試一次。", error:"AI request failed" });
+    res.status(500).json({ error: "AI request failed" });
   }
 });
 
