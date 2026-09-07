@@ -1,6 +1,6 @@
 {
-  "name": "echo-diary-v10",
-  "version": "10.0.0",
+  "name": "echo-diary-v11",
+  "version": "11.0.0",
   "private": true,
   "scripts": {
     "start": "node server.js"
