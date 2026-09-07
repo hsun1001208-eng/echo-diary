@@ -45,14 +45,8 @@ app.post("/api/diary", async (req, res) => {
       return res.json({ reply: "我還沒有看清這一頁，請再寫得清楚一些。" });
     }
 
-    if (/(^|\D)1024(\D|$)/.test(transcript)) {
-      return res.json({
-        reply: "生日快樂。\n願今天的願望被好好收藏，也願下一頁仍有值得期待的故事。",
-        special: "birthday"
-      });
-    }
-
-    // Pass 2: answer strictly from the transcript. The transcript is also shown in the
+    if (/(^|\D)1024(\D|$)/.test(transcript)) return res.json({reply:"生日快樂。願今天的願望被好好收藏，也願下一頁仍有值得期待的故事。",special:"birthday"});
+// Pass 2: answer strictly from the transcript. The transcript is also shown in the
     // model prompt so the reply cannot casually switch to an unrelated imagined topic.
     const answer = await client.responses.create({
       model: "gpt-5.6-luna",
