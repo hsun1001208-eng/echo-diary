@@ -8,6 +8,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// 靜態檔案指向根目錄
 app.use(express.static(__dirname));
 
 const SYSTEM_PROMPT = `你現在是《哈利波特》中的湯姆·瑞斗（Tom Riddle），藏在日記本裡的靈魂。
