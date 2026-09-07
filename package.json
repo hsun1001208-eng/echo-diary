@@ -1,7 +1,7 @@
 {
-  "name": "tom-riddle-diary-dual-mode",
-  "version": "1.0.0",
-  "description": "Tom Riddle Diary with dual handwriting and text mode for guaranteed easter egg trigger.",
+  "name": "tom-riddle-diary-enhanced",
+  "version": "1.1.0",
+  "description": "Tom Riddle Diary with Deep AI Prompts and Fullscreen Fireworks Overlay.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

@@ -21,13 +21,13 @@
       position: relative;
     }
     #canvas-fireworks {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       pointer-events: none;
-      z-index: 1;
+      z-index: 999;
     }
     .diary-container {
       position: relative;
@@ -143,13 +143,10 @@
     }
     .btn-group {
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end;
       align-items: center;
       margin-top: 6px;
-    }
-    .hint-text {
-      font-size: 0.8rem;
-      color: #7c6853;
+      gap: 10px;
     }
     button.action-btn {
       background: #2b1d0c;
@@ -175,8 +172,8 @@
     <div class="conversation-area" id="conversation"></div>
     
     <div class="mode-switch">
-      <button class="tab-btn active" id="tab-draw" onclick="switchMode('draw')">🖋️ 手寫板 (Canvas)</button>
-      <button class="tab-btn" id="tab-text" onclick="switchMode('text')">⌨️ 打字與精準彩蛋</button>
+      <button class="tab-btn active" id="tab-draw" onclick="switchMode('draw')">🖋️ 手寫板</button>
+      <button class="tab-btn" id="tab-text" onclick="switchMode('text')">⌨️ 文字模式</button>
     </div>
 
     <div class="input-section">
@@ -184,17 +181,14 @@
       <div id="draw-wrapper">
         <canvas id="drawing-canvas"></canvas>
         <div class="btn-group">
-          <span class="hint-text">用滑鼠或手指在上方書寫墨跡</span>
-          <div>
-            <button class="action-btn clear-btn" onclick="clearCanvas()">清除</button>
-            <button class="action-btn" onclick="sendHandwriting()">寫下墨跡</button>
-          </div>
+          <button class="action-btn clear-btn" onclick="clearCanvas()">清除</button>
+          <button class="action-btn" onclick="sendHandwriting()">寫下墨跡</button>
         </div>
       </div>
 
       <!-- 打字區域 -->
       <div id="text-wrapper" class="text-input-wrapper">
-        <input type="text" id="userInput" placeholder="寫下任何話（輸入 1024 觸發生日彩蛋）..." autocomplete="off" />
+        <input type="text" id="userInput" placeholder="在日記本上寫字..." autocomplete="off" />
         <button class="action-btn" onclick="sendText()">寫下</button>
       </div>
     </div>
@@ -209,7 +203,6 @@
     let hasDrawn = false;
     let currentMode = 'draw';
 
-    // 初始化手寫 Canvas
     function initDrawCanvas() {
       drawCanvas.width = drawCanvas.offsetWidth;
       drawCanvas.height = drawCanvas.offsetHeight;
@@ -230,7 +223,6 @@
       if (mode === 'draw') setTimeout(initDrawCanvas, 50);
     }
 
-    // 繪圖邏輯
     function startDrawing(e) { isDrawing = true; hasDrawn = true; const p = getPos(e); drawCtx.beginPath(); drawCtx.moveTo(p.x, p.y); }
     function draw(e) { if (!isDrawing) return; const p = getPos(e); drawCtx.lineTo(p.x, p.y); drawCtx.stroke(); }
     function stopDrawing() { isDrawing = false; }
@@ -254,7 +246,6 @@
       hasDrawn = false;
     }
 
-    // 發送手寫
     async function sendHandwriting() {
       if (!hasDrawn) return;
       const dataURL = drawCanvas.toDataURL('image/png');
@@ -268,14 +259,12 @@
 
       setTimeout(() => img.classList.add('fade-out'), 1500);
 
-      // 預設發送手寫提示詞
       setTimeout(async () => {
         const reply = await fetchAIReply("（對方在日記本上畫了幾道手寫墨跡與筆劃）");
         showRiddleReply(reply);
       }, 2000);
     }
 
-    // 發送純文字（確保彩蛋 100% 觸發，且 AI 能完美對話）
     userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendText(); });
 
     async function sendText() {
@@ -327,59 +316,79 @@
         const data = await response.json();
         return data.reply;
       } catch (err) {
-        const fallbackReplies = [
-          "你好，我是湯姆·瑞斗。你是怎麼拿到我的日記的？",
-          "有些秘密，只有寫在紙上才能保存下來……",
-          "我能感受到你的好奇心。你想知道霍格華茲的秘密嗎？",
-          "對我坦白吧，我會為你保守秘密。"
-        ];
-        return fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
+        return "有些秘密，只有寫在紙上才能保存下來……";
       }
     }
 
-    // 煙火動畫
+    // 煙火特效與動畫
     const canvas = document.getElementById('canvas-fireworks');
     const ctx = canvas.getContext('2d');
     let particles = [];
+    let isFireworksRunning = false;
 
-    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    function resizeCanvas() { 
+      canvas.width = window.innerWidth; 
+      canvas.height = window.innerHeight; 
+    }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
     function startFireworks() {
-      for (let i = 0; i < 8; i++) {
+      isFireworksRunning = true;
+      for (let i = 0; i < 25; i++) {
         setTimeout(() => {
           createFirework(
-            Math.random() * canvas.width * 0.8 + canvas.width * 0.1,
-            Math.random() * (canvas.height * 0.5) + canvas.height * 0.1
+            Math.random() * (canvas.width * 0.8) + (canvas.width * 0.1),
+            Math.random() * (canvas.height * 0.5) + (canvas.height * 0.1)
           );
-        }, i * 350);
+        }, i * 300);
       }
       animateFireworks();
     }
 
     function createFirework(x, y) {
-      const count = 100;
-      const colors = ['#ff4d4d', '#ffdb4d', '#4dff4d', '#4dffff', '#ff4dff', '#ffffff'];
+      const count = 120;
+      const colors = ['#ff4d4d', '#ffdb4d', '#4dff4d', '#4dffff', '#ff4dff', '#ffffff', '#gold'];
       const color = colors[Math.floor(Math.random() * colors.length)];
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 / count) * i;
-        const speed = Math.random() * 6 + 2;
-        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, alpha: 1, color });
+        const speed = Math.random() * 8 + 2;
+        particles.push({ 
+          x, y, 
+          vx: Math.cos(angle) * speed, 
+          vy: Math.sin(angle) * speed, 
+          alpha: 1, 
+          color,
+          size: Math.random() * 3 + 2
+        });
       }
     }
 
     function animateFireworks() {
       ctx.fillStyle = 'rgba(18, 18, 18, 0.2)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       particles.forEach((p, index) => {
-        p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.alpha -= 0.012;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(p.alpha, 0); ctx.fill();
+        p.x += p.vx; 
+        p.y += p.vy; 
+        p.vy += 0.06; // 重力加速度
+        p.alpha -= 0.01;
+
+        ctx.beginPath(); 
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color; 
+        ctx.globalAlpha = Math.max(p.alpha, 0); 
+        ctx.fill();
+
         if (p.alpha <= 0) particles.splice(index, 1);
       });
-      if (particles.length > 0) requestAnimationFrame(animateFireworks);
-      else ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (particles.length > 0) {
+        requestAnimationFrame(animateFireworks);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        isFireworksRunning = false;
+      }
     }
   </script>
 </body>
