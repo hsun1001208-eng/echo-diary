@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tom Riddle's Diary - 湯姆瑞斗的日記</title>
+  <title>Tom Riddle's Diary - 湯姆瑞斗的手寫日記</title>
   <style>
     * {
       box-sizing: border-box;
@@ -33,15 +33,15 @@
       position: relative;
       z-index: 2;
       width: 90%;
-      max-width: 650px;
-      height: 80vh;
+      max-width: 700px;
+      height: 85vh;
       background: #e8d8b8;
       background-image: radial-gradient(#d0be96 15%, transparent 16%);
       background-size: 20px 20px;
       border: 12px solid #2b1d0c;
       border-radius: 8px;
       box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 50px rgba(0, 0, 0, 0.3);
-      padding: 40px;
+      padding: 25px;
       display: flex;
       flex-direction: column;
     }
@@ -50,9 +50,9 @@
       font-size: 1.2rem;
       color: #5c4a38;
       letter-spacing: 2px;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       border-bottom: 1px solid #b5a484;
-      padding-bottom: 10px;
+      padding-bottom: 5px;
       font-weight: bold;
     }
     .conversation-area {
@@ -60,8 +60,9 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 15px;
       padding-right: 10px;
+      position: relative;
     }
     .message {
       font-size: 1.2rem;
@@ -70,12 +71,14 @@
       word-wrap: break-word;
       transition: opacity 1.5s ease;
     }
-    .user-message {
+    .user-handwriting-img {
+      max-width: 80%;
+      height: auto;
       align-self: flex-start;
-      color: #1a0f00;
-      font-style: italic;
+      filter: sepia(0.5) contrast(1.2);
+      transition: opacity 1.5s ease;
     }
-    .user-message.fade-out {
+    .user-handwriting-img.fade-out {
       opacity: 0;
     }
     .riddle-message {
@@ -89,36 +92,48 @@
       0% { opacity: 0; filter: blur(4px); }
       100% { opacity: 1; filter: blur(0); }
     }
-    .input-area {
-      margin-top: 20px;
+    .handwrite-area {
+      margin-top: 10px;
       display: flex;
-      gap: 10px;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(43, 29, 12, 0.05);
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px dashed #5c4a38;
     }
-    input[type="text"] {
-      flex: 1;
+    canvas#drawing-canvas {
+      width: 100%;
+      height: 120px;
       background: transparent;
-      border: none;
-      border-bottom: 2px solid #5c4a38;
-      font-family: 'Georgia', serif;
-      font-size: 1.1rem;
-      color: #2b1d0c;
-      padding: 8px;
-      outline: none;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .btn-group {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
     }
     button {
       background: #2b1d0c;
       color: #e8d8b8;
       border: none;
-      padding: 8px 18px;
+      padding: 6px 14px;
       font-family: 'Georgia', serif;
       cursor: pointer;
       border-radius: 4px;
+      font-size: 0.95rem;
       transition: background 0.3s;
     }
     button:hover {
       background: #4a3418;
     }
+    button.clear-btn {
+      background: #5c4a38;
+    }
   </style>
+  <!-- OCR 辨識庫 (辨識手寫 1024 特效) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -127,46 +142,116 @@
   <div class="diary-container">
     <div class="diary-header">T. M. RIDDLE</div>
     <div class="conversation-area" id="conversation"></div>
-    <div class="input-area">
-      <input type="text" id="userInput" placeholder="在日記本上寫字..." autocomplete="off" />
-      <button onclick="handleSend()">寫下</button>
+    
+    <div class="handwrite-area">
+      <canvas id="drawing-canvas"></canvas>
+      <div class="btn-group">
+        <button class="clear-btn" onclick="clearCanvas()">清除</button>
+        <button onclick="handleSendHandwriting()">寫下墨跡</button>
+      </div>
     </div>
   </div>
 
   <script>
     const conversation = document.getElementById('conversation');
-    const userInput = document.getElementById('userInput');
+    const drawCanvas = document.getElementById('drawing-canvas');
+    const drawCtx = drawCanvas.getContext('2d');
+    let isDrawing = false;
+    let hasDrawn = false;
 
-    userInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleSend();
-    });
+    function initDrawCanvas() {
+      drawCanvas.width = drawCanvas.offsetWidth;
+      drawCanvas.height = drawCanvas.offsetHeight;
+      drawCtx.strokeStyle = '#1a0f00';
+      drawCtx.lineWidth = 3;
+      drawCtx.lineCap = 'round';
+      drawCtx.lineJoin = 'round';
+    }
+    window.addEventListener('resize', initDrawCanvas);
+    setTimeout(initDrawCanvas, 100);
 
-    async function handleSend() {
-      const text = userInput.value.trim();
-      if (!text) return;
+    function startDrawing(e) {
+      isDrawing = true;
+      hasDrawn = true;
+      const pos = getPos(e);
+      drawCtx.beginPath();
+      drawCtx.moveTo(pos.x, pos.y);
+    }
 
-      userInput.value = '';
+    function draw(e) {
+      if (!isDrawing) return;
+      const pos = getPos(e);
+      drawCtx.lineTo(pos.x, pos.y);
+      drawCtx.stroke();
+    }
 
-      // 顯示使用者寫下的字
-      const userMsgDiv = document.createElement('div');
-      userMsgDiv.className = 'message user-message';
-      userMsgDiv.textContent = text;
-      conversation.appendChild(userMsgDiv);
+    function stopDrawing() {
+      isDrawing = false;
+    }
+
+    function getPos(e) {
+      const rect = drawCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    drawCanvas.addEventListener('mousedown', startDrawing);
+    drawCanvas.addEventListener('mousemove', draw);
+    drawCanvas.addEventListener('mouseup', stopDrawing);
+    drawCanvas.addEventListener('mouseleave', stopDrawing);
+
+    drawCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); });
+    drawCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+    drawCanvas.addEventListener('touchend', stopDrawing);
+
+    function clearCanvas() {
+      drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+      hasDrawn = false;
+    }
+
+    async function handleSendHandwriting() {
+      if (!hasDrawn) return;
+
+      const dataURL = drawCanvas.toDataURL('image/png');
+      
+      const img = document.createElement('img');
+      img.src = dataURL;
+      img.className = 'user-handwriting-img';
+      conversation.appendChild(img);
       conversation.scrollTop = conversation.scrollHeight;
 
-      // 模擬墨水滲透消失（字體淡出）
+      clearCanvas();
+
       setTimeout(() => {
-        userMsgDiv.classList.add('fade-out');
+        img.classList.add('fade-out');
       }, 1500);
 
-      // 判斷彩蛋或呼叫 AI
-      if (text === '1024') {
-        setTimeout(() => {
-          triggerEasterEgg();
-        }, 2000);
-      } else {
+      // OCR 辨識手寫內容
+      try {
+        const worker = await Tesseract.createWorker('eng');
+        const ret = await worker.recognize(dataURL);
+        await worker.terminate();
+        const text = ret.data.text.trim();
+
+        if (text.includes('1024')) {
+          setTimeout(() => {
+            triggerEasterEgg();
+          }, 2000);
+          return;
+        }
+
         setTimeout(async () => {
-          const reply = await fetchAIReply(text);
+          const reply = await fetchAIReply(text || "手寫筆跡");
+          showRiddleReply(reply);
+        }, 2200);
+
+      } catch (err) {
+        setTimeout(async () => {
+          const reply = await fetchAIReply("手寫筆跡");
           showRiddleReply(reply);
         }, 2200);
       }
@@ -180,13 +265,11 @@
       conversation.scrollTop = conversation.scrollHeight;
     }
 
-    // 彩蛋處理邏輯
     function triggerEasterEgg() {
       showRiddleReply("吳悠生日快樂");
       startFireworks();
     }
 
-    // AI 回應介接 (可連線後端 API /api/chat)
     async function fetchAIReply(prompt) {
       try {
         const response = await fetch('/api/chat', {
@@ -194,11 +277,10 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: prompt })
         });
-        if (!response.ok) throw new Error('Network response was not ok');
+        if (!response.ok) throw new Error('Network error');
         const data = await response.json();
         return data.reply;
       } catch (err) {
-        // 後端未連接或展示時的備用回應邏輯
         const fallbackReplies = [
           "你好，我是湯姆·瑞斗。你是怎麼拿到我的日記的？",
           "有些秘密，只有寫在紙上才能保存下來……",
@@ -209,7 +291,6 @@
       }
     }
 
-    // 煙火特效 Canvas 邏輯
     const canvas = document.getElementById('canvas-fireworks');
     const ctx = canvas.getContext('2d');
     let particles = [];
@@ -257,7 +338,7 @@
       particles.forEach((p, index) => {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.05; // 重力效果
+        p.vy += 0.05;
         p.alpha -= 0.012;
 
         ctx.beginPath();

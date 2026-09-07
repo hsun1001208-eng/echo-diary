@@ -1,7 +1,7 @@
 {
-  "name": "tom-riddle-diary",
+  "name": "tom-riddle-diary-handwriting",
   "version": "1.0.0",
-  "description": "Tom Riddle Diary interactive web application with birthday easter egg and fireworks.",
+  "description": "Tom Riddle Diary with Handwriting Pad and Easter Egg",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
