@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
 <meta name="format-detection" content="telephone=no">
-<title>Echo Diary V8</title>
+<title>Echo Diary V17</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:pan-x pan-y}
@@ -96,7 +96,8 @@ send.addEventListener('click',async()=>{
   if(!r.ok)throw new Error(await r.text());
   const data=await r.json();clearInk();status.textContent='日記已回答';type(data.reply||'我還沒有看清這一頁。');
   page++;document.querySelector('#page').textContent=String(page).padStart(2,'0');
- }catch(e){console.error(e);status.textContent='AI 暫時無法回應';alert('AI 暫時沒有回應，請稍後再試。')}
+ }catch(e){console.error(e);status.textContent='AI 暫時無法回應';alert('AI 暫時沒有回應，請稍後再試。
+如果一直出現，請檢查 Render 的部署紀錄。')}
  finally{send.disabled=clear.disabled=false}
 });
 </script>

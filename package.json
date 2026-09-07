@@ -1,1 +1,12 @@
-{"name":"echo-diary-v7","version":"7.0.0","private":true,"scripts":{"start":"node server.js"},"dependencies":{"express":"latest","openai":"latest"}}
+{
+  "name": "echo-diary-v17",
+  "version": "17.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "latest",
+    "openai": "latest"
+  }
+}

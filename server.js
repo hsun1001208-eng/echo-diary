@@ -1,13 +1,12 @@
-
-
-app.get("/health",(req,res)=>{
-  res.json({status:"ok",version:"V16"});
-});
 const express = require("express");
 const OpenAI = require("openai");
 const path = require("path");
 
 const app = express();
+
+app.get("/health",(req,res)=>{
+  res.json({status:"ok",version:"V17"});
+});
 app.use(express.json({ limit: "12mb" }));
 app.use(express.static(__dirname));
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
@@ -89,4 +88,4 @@ app.post("/api/diary", async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT || 3000, () => console.log("Echo Diary V8 running"));
+app.listen(process.env.PORT || 3000, () => console.log("Echo Diary V17 running"));
